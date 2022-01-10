@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:14.0-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${TYPEORM_USERNAME}
+      POSTGRES_PASSWORD: ${TYPEORM_PASSWORD}
+      POSTGRES_DB: ${TYPEORM_DATABASE}
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    ports:
+      - 5433:5432
+
+  redis:
+    container_name: redis
+    image: redis:alpine
+    ports:
+      - 6380:6379
+
+  adminer:
+    container_name: adminer-api
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+
+  api:
+    container_name: api
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgres://${TYPEORM_USERNAME}:${TYPEORM_PASSWORD}@postgres:5432/${TYPEORM_DATABASE}
+      API_PORT: ${API_PORT}
+      REDIS_HOST: redis
+    command: npm run start:dev
+    ports:
+      - ${API_PORT}:${API_PORT}
+    restart: unless-stopped
+
+networks:
+  postgres:
+    driver: bridge
